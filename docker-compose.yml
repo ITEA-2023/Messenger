@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  messenger-db:
+    container_name: messenger
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'messenger-db'
+      MYSQL_ROOT_USER: 'root'
+      MYSQL_ROOT_PASSWORD: 'password'
+    ports:
+      - '3310:3310'
+    expose:
+      - '3310'
+    volumes:
+      - messenger-db:/var/lib/messenger
+
+volumes:
+  messenger-db:
