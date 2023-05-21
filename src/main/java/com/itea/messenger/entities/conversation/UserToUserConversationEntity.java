@@ -1,5 +1,6 @@
 package com.itea.messenger.entities.conversation;
 
+import com.itea.messenger.entities.user.UserEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,10 +18,13 @@ public class UserToUserConversationEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
-    @Column(nullable = false)
-    private String firstUserConversationDisplayName;
-    @Column(nullable = false)
-    private String secondUserConversationDisplayName;
+    @OneToOne
+    @JoinColumn(name = "first_user_id")
+    private UserEntity firstUserEntity;
+
+    @OneToOne
+    @JoinColumn(name = "second_user_d")
+    private UserEntity secondUserEntity;
 
     @OneToOne
     @JoinColumn(name = "conversation_id")

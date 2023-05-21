@@ -15,7 +15,6 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     boolean existsByUsername(String username);
     Optional<UserEntity> findById(long id);
     void removeById(long id);
-
     @Query("select u from UserEntity u join u.userConversations c where c.id = :conversationId")
     List<UserEntity> findAllUserEntitiesByConversationEntityId(@Param("conversationId") long conversationId);
 }

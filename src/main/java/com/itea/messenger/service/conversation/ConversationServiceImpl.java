@@ -1,6 +1,8 @@
 package com.itea.messenger.service.conversation;
 
+import com.itea.messenger.dto.conversation.ConversationDto;
 import com.itea.messenger.dto.conversation.GroupConversationCreationStatus;
+import com.itea.messenger.dto.conversation.MessageDto;
 import com.itea.messenger.dto.conversation.MessageSendingStatus;
 import com.itea.messenger.dto.conversation.requests.GroupConversationCreationRequest;
 import com.itea.messenger.dto.conversation.requests.MessageToGroupRequest;
@@ -26,7 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -84,7 +88,7 @@ public class ConversationServiceImpl implements ConversationService {
     }
 
     @Override
-    public MessageToUserResponse createNewUserToUserConversation(MessageToUserRequest messageToNewUserRequest) {
+    public MessageToUserResponse createUserToUserConversation(MessageToUserRequest messageToNewUserRequest) {
         long userId = messageToNewUserRequest.getUserId();
         String messageBody = messageToNewUserRequest.getMessageBody();
 
@@ -92,11 +96,8 @@ public class ConversationServiceImpl implements ConversationService {
                 () -> new RuntimeException("Unable to find user. User with id: " + userId + " doesn't exist")
         );
 
-        String messageSenderUsername = SecurityContextHolder.getContext().getAuthentication().getName();
-        UserEntity messageSender = userRepository.findByUsername(messageSenderUsername).orElseThrow(
-                () -> new UsernameNotFoundException("Unable to find user. User with username: " +
-                        messageSenderUsername + " doesn't exist")
-        );
+        UserEntity messageSender = getCurrentUserEntity();
+
         List<UserEntity> conversationMembers = List.of(
                 messageReceiver,
                 messageSender
@@ -113,8 +114,8 @@ public class ConversationServiceImpl implements ConversationService {
             ConversationEntity savedConversationEntity = conversationRepository.save(conversationEntity);
 
             UserToUserConversationEntity userToUserConversationEntity = UserToUserConversationEntity.builder()
-                    .firstUserConversationDisplayName(messageReceiver.getFirstName())
-                    .secondUserConversationDisplayName(messageSender.getFirstName())
+                    .firstUserEntity(messageReceiver)
+                    .secondUserEntity(messageSender)
                     .conversationEntity(savedConversationEntity)
                     .build();
             userToUserConversationRepository.save(userToUserConversationEntity);
@@ -125,11 +126,10 @@ public class ConversationServiceImpl implements ConversationService {
                 conversationEntity,
                 messageBody
         );
-
     }
 
     @Override
-    public MessageToGroupResponse sendMessageToExistingConversation(MessageToGroupRequest messageSendingRequest) {
+    public MessageToGroupResponse sendMessageToConversation(MessageToGroupRequest messageSendingRequest) {
         long conversationId = messageSendingRequest.getConversationId();
         String messageBody = messageSendingRequest.getMessageBody();
 
@@ -137,39 +137,87 @@ public class ConversationServiceImpl implements ConversationService {
                 () -> new RuntimeException("Conversation with id: " + conversationId + " doesn't exist")
         );
 
-        String messageSenderUsername = SecurityContextHolder.getContext().getAuthentication().getName();
-        UserEntity messageSenderEntity = userRepository.findByUsername(messageSenderUsername).orElseThrow(
-                () -> new UsernameNotFoundException("Unable to find user. User with username: " +
-                        messageSenderUsername + " doesn't exist")
-        );
+        UserEntity messageSender = getCurrentUserEntity();
 
-        List<UserEntity> userEntities = userRepository.findAllUserEntitiesByConversationEntityId(conversationEntity.getId());
+        checkIfUserIsInConversation(messageSender, conversationEntity);
 
-        MessageEntity messageEntity = MessageEntity.builder()
-                .userEntity(messageSenderEntity)
-                .conversationEntity(conversationEntity)
-                .messageBody(messageBody)
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        for (UserEntity userEntity : userEntities) {
-            MessageStatusEntity messageStatusEntity = MessageStatusEntity.builder()
-                    .messageEntity(messageEntity)
-                    .userEntity(userEntity)
-                    .messageStatus(MessageStatus.UNREAD)
-                    .build();
-
-            messageStatusRepository.save(messageStatusEntity);
-        }
-
-        MessageEntity savedMessageEntity = messageRepository.save(messageEntity);
-
-
+        MessageEntity savedMessageEntity = sendMessageToUsersInConversation(conversationEntity, messageSender, messageBody);
 
         return MessageToGroupResponse.builder()
                 .conversationId(savedMessageEntity.getConversationEntity().getId())
                 .messageSendingStatus(MessageSendingStatus.SENT)
                 .build();
+    }
+
+    @Override
+    public List<ConversationDto> getAllConversations() {
+        UserEntity userEntity = getCurrentUserEntity();
+        List<ConversationEntity> userConversations = userEntity.getUserConversations();
+        return getConversationsToReturn(userEntity, userConversations);
+    }
+
+
+
+    @Override
+    public List<ConversationDto> getAllConversationsWithNewMessages() {
+        UserEntity userEntity = getCurrentUserEntity();
+        List<MessageStatusEntity> messageStatusEntities = messageStatusRepository.findAllByUserEntityAndMessageStatus(userEntity, MessageStatus.UNREAD);
+        List<ConversationEntity> userConversations = new ArrayList<>();
+        for (MessageStatusEntity messageStatusEntity : messageStatusEntities) {
+            if (!messageStatusEntity.getMessageEntity().getUserEntity().equals(userEntity)) {
+                ConversationEntity conversationEntity = messageStatusEntity.getMessageEntity().getConversationEntity();
+                if (!userConversations.contains(conversationEntity)) {
+                    userConversations.add(conversationEntity);
+                }
+            }
+        }
+        return getConversationsToReturn(userEntity, userConversations);
+    }
+
+    @Override
+    public List<MessageDto> getAllMessagesFromConversation(long conversationId) {
+        UserEntity userEntity = getCurrentUserEntity();
+
+        ConversationEntity conversationEntity = conversationRepository.findById(conversationId).orElseThrow(
+                () -> new RuntimeException("Unable to find conversation. Conversation with id: " + conversationId + " doesn't exist")
+        );
+
+        checkIfUserIsInConversation(userEntity, conversationEntity);
+
+        List<MessageEntity> messageEntities = messageRepository.findAllByConversationEntity(conversationEntity);
+
+        List<MessageDto> messageDtoList = new ArrayList<>();
+        for (MessageEntity messageEntity : messageEntities) {
+            UserEntity messageSender = messageEntity.getUserEntity();
+
+            MessageStatusEntity messageStatusEntityForCurrentUser = messageStatusRepository.findByMessageEntityAndUserEntity(
+                    messageEntity,
+                    userEntity
+            );
+
+            MessageStatusEntity messageStatusEntityForMessageSender = messageStatusRepository.findByMessageEntityAndUserEntity(
+                    messageEntity,
+                    messageSender
+            );
+
+            messageDtoList.add(
+                    MessageDto.builder()
+                            .senderId(messageEntity.getUserEntity().getId())
+                            .senderUsername(messageEntity.getUserEntity().getUsername())
+                            .messageBody(messageEntity.getMessageBody())
+                            .createdAt(messageEntity.getCreatedAt())
+                            .messageStatus(messageStatusEntityForCurrentUser.getMessageStatus())
+                            .build()
+            );
+
+            if (!messageStatusEntityForCurrentUser.equals(messageStatusEntityForMessageSender) &&
+                    messageStatusEntityForCurrentUser.getMessageStatus().equals(MessageStatus.UNREAD)) {
+                messageStatusEntityForCurrentUser.setMessageStatus(MessageStatus.READ);
+                messageStatusEntityForMessageSender.setMessageStatus(MessageStatus.READ);
+            }
+        }
+
+        return messageDtoList.stream().sorted(Comparator.comparing(MessageDto::getCreatedAt)).collect(Collectors.toList());
     }
 
 
@@ -196,16 +244,32 @@ public class ConversationServiceImpl implements ConversationService {
         return conversationEntityToFind;
     }
 
-    private MessageToUserResponse sendMessageToUserToUserConversation(UserEntity messageReceiver, UserEntity messageSender, ConversationEntity existingConversation, String messageBody) {
-        List<UserEntity> userEntities = userRepository.findAllUserEntitiesByConversationEntityId(existingConversation.getId());
+    private MessageToUserResponse sendMessageToUserToUserConversation(
+            UserEntity messageReceiver,
+            UserEntity messageSender,
+            ConversationEntity conversation,
+            String messageBody) {
 
+        sendMessageToUsersInConversation(conversation, messageSender, messageBody);
+
+        return MessageToUserResponse.builder()
+                .userId(messageReceiver.getId())
+                .messageSendingStatus(MessageSendingStatus.SENT)
+                .build();
+    }
+
+    private MessageEntity sendMessageToUsersInConversation(
+            ConversationEntity conversation,
+            UserEntity sender,
+            String messageBody) {
+
+        List<UserEntity> userEntities = userRepository.findAllUserEntitiesByConversationEntityId(conversation.getId());
         MessageEntity messageEntity = MessageEntity.builder()
-                .userEntity(messageSender)
-                .conversationEntity(existingConversation)
+                .userEntity(sender)
+                .conversationEntity(conversation)
                 .messageBody(messageBody)
                 .createdAt(LocalDateTime.now())
                 .build();
-
         for (UserEntity userEntity : userEntities) {
             MessageStatusEntity messageStatusEntity = MessageStatusEntity.builder()
                     .messageEntity(messageEntity)
@@ -215,11 +279,53 @@ public class ConversationServiceImpl implements ConversationService {
 
             messageStatusRepository.save(messageStatusEntity);
         }
-        messageRepository.save(messageEntity);
-
-        return MessageToUserResponse.builder()
-                .userId(messageReceiver.getId())
-                .messageSendingStatus(MessageSendingStatus.SENT)
-                .build();
+        return messageRepository.save(messageEntity);
     }
+
+    private List<ConversationDto> getConversationsToReturn(UserEntity userEntity, List<ConversationEntity> conversationEntities) {
+        List<ConversationDto> conversations = new ArrayList<>();
+
+        for (ConversationEntity conversationEntity : conversationEntities) {
+            switch (conversationEntity.getConversationType()) {
+
+                case GROUP -> {
+                    GroupConversationEntity groupConversationEntity =
+                            groupConversationRepository.findByConversationEntity(conversationEntity);
+                    conversations.add(ConversationDto.builder()
+                            .id(conversationEntity.getId())
+                            .name(groupConversationEntity.getGroupName())
+                            .build());
+                }
+
+                case PERSON_TO_PERSON -> {
+                    UserToUserConversationEntity userToUserConversationEntity =
+                            userToUserConversationRepository.findByConversationEntity(conversationEntity);
+
+                    final String firstUsername = userToUserConversationEntity.getFirstUserEntity().getUsername();
+                    final String secondUsername = userToUserConversationEntity.getSecondUserEntity().getUsername();
+
+                    String conversationName = null;
+                    if (userEntity.getUsername().equals(firstUsername)) {
+                        conversationName = secondUsername;
+                    } else if (userEntity.getUsername().equals(secondUsername)) {
+                        conversationName = firstUsername;
+                    }
+
+                    conversations.add(ConversationDto.builder()
+                            .id(conversationEntity.getId())
+                            .name(conversationName)
+                            .build());
+                }
+            }
+        }
+        return conversations;
+    }
+
+    private void checkIfUserIsInConversation(UserEntity userEntity, ConversationEntity conversationEntity) {
+        if (!userEntity.getUserConversations().contains(conversationEntity)) {
+            throw new RuntimeException("Permission denied. User " + userEntity.getUsername() +
+                    " is not a member of conversation with id: " + conversationEntity.getId());
+        }
+    }
+
 }

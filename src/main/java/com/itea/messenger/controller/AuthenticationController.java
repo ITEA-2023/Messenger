@@ -1,7 +1,7 @@
 package com.itea.messenger.controller;
 
-import com.itea.messenger.dto.requests.UserAuthenticationAndDeletionRequest;
-import com.itea.messenger.dto.requests.UserRegistrationRequest;
+import com.itea.messenger.dto.user.requests.UserAuthenticationAndDeletionRequest;
+import com.itea.messenger.dto.user.requests.UserRegistrationRequest;
 import com.itea.messenger.service.security.AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

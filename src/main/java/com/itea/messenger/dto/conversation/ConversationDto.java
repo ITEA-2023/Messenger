@@ -1,4 +1,4 @@
-package com.itea.messenger.dto.responses;
+package com.itea.messenger.dto.conversation;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserRegistrationAndAuthenticationResponse {
-    private String token;
+public class ConversationDto {
+    private long id;
+    private String name;
 }

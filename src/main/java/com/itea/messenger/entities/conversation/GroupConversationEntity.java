@@ -25,7 +25,6 @@ public class GroupConversationEntity {
     @JoinColumn(name = "group_creator_id")
     private UserEntity creator;
 
-
     @OneToOne
     @JoinColumn(name = "conversation_id")
     private ConversationEntity conversationEntity;

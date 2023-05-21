@@ -1,16 +1,19 @@
-package com.itea.messenger.dto.responses;
+package com.itea.messenger.dto.user;
 
-import com.itea.messenger.dto.ModificationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserDeletionResponse {
+public class UserDto {
     private String username;
-    private ModificationStatus modificationType;
+    private String firstName;
+    private String secondName;
+    private LocalDate registrationDate;
 }

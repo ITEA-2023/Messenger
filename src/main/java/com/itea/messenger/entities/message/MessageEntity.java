@@ -33,5 +33,4 @@ public class MessageEntity {
     private String messageBody;
     @Column(nullable = false)
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }
