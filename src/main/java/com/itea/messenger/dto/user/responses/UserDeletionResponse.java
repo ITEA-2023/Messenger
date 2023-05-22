@@ -1,6 +1,6 @@
-package com.itea.messenger.dto.responses;
+package com.itea.messenger.dto.user.responses;
 
-import com.itea.messenger.dto.ModificationStatus;
+import com.itea.messenger.dto.user.ModificationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserModificationResponse {
+public class UserDeletionResponse {
     private String username;
     private ModificationStatus modificationType;
 }

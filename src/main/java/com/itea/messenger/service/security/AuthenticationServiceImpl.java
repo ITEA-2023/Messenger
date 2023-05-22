@@ -1,8 +1,8 @@
 package com.itea.messenger.service.security;
 
-import com.itea.messenger.dto.requests.UserAuthenticationAndDeletionRequest;
-import com.itea.messenger.dto.requests.UserRegistrationRequest;
-import com.itea.messenger.dto.responses.UserRegistrationAndAuthenticationResponse;
+import com.itea.messenger.dto.user.requests.UserAuthenticationAndDeletionRequest;
+import com.itea.messenger.dto.user.requests.UserRegistrationRequest;
+import com.itea.messenger.dto.user.responses.UserRegistrationAndAuthenticationResponse;
 import com.itea.messenger.entities.token.TokenEntity;
 import com.itea.messenger.entities.token.TokenType;
 import com.itea.messenger.entities.user.UserEntity;

@@ -1,5 +1,6 @@
 package com.itea.messenger.entities.user;
 
+import com.itea.messenger.entities.conversation.ConversationEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Builder
@@ -37,4 +40,7 @@ public class UserEntity {
     @Enumerated(value = EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
+
+    @ManyToMany(mappedBy = "conversationMembers")
+    private List<ConversationEntity> userConversations = new ArrayList<>();
 }

@@ -1,4 +1,4 @@
-package com.itea.messenger.dto.requests;
+package com.itea.messenger.dto.user.requests;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

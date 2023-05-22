@@ -1,10 +1,11 @@
-package com.itea.messenger.service;
+package com.itea.messenger.service.user;
 
-import com.itea.messenger.dto.ModificationStatus;
-import com.itea.messenger.dto.requests.UserAuthenticationAndDeletionRequest;
-import com.itea.messenger.dto.requests.UserModificationRequest;
-import com.itea.messenger.dto.responses.UserDeletionResponse;
-import com.itea.messenger.dto.responses.UserModificationResponse;
+import com.itea.messenger.dto.user.ModificationStatus;
+import com.itea.messenger.dto.user.UserDto;
+import com.itea.messenger.dto.user.requests.UserAuthenticationAndDeletionRequest;
+import com.itea.messenger.dto.user.requests.UserModificationRequest;
+import com.itea.messenger.dto.user.responses.UserDeletionResponse;
+import com.itea.messenger.dto.user.responses.UserModificationResponse;
 import com.itea.messenger.entities.user.UserEntity;
 import com.itea.messenger.repository.TokenRepository;
 import com.itea.messenger.repository.UserRepository;
@@ -15,6 +16,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @Transactional
@@ -75,7 +79,27 @@ public class UserServiceImpl implements UserService {
 
         return UserModificationResponse.builder()
                 .username(userEntity.getUsername())
-                .modificationType(ModificationStatus.MODIFIED)
+                .modificationStatus(ModificationStatus.MODIFIED)
                 .build();
+    }
+
+    @Override
+    public List<UserDto> getAllUsers() {
+        List<UserEntity> userEntities = userRepository.findAll();
+
+        List<UserDto> users = new ArrayList<>();
+
+        for (UserEntity userEntity : userEntities) {
+            users.add(
+                    UserDto.builder()
+                            .username(userEntity.getUsername())
+                            .firstName(userEntity.getFirstName())
+                            .secondName(userEntity.getSecondName())
+                            .registrationDate(userEntity.getRegistrationDate())
+                            .build()
+            );
+        }
+
+        return users;
     }
 }

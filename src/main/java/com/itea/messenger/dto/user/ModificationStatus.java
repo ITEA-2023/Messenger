@@ -1,4 +1,4 @@
-package com.itea.messenger.dto;
+package com.itea.messenger.dto.user;
 
 public enum ModificationStatus {
     DELETED,
